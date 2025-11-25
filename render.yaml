@@ -1,0 +1,30 @@
+services:
+  # Main web service
+  - type: web
+    name: remotion-caption-app
+    env: node
+    region: oregon  # Change to your preferred region
+    plan: starter   # Options: free, starter ($7/mo), standard ($25/mo)
+    branch: master
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "18"
+      - key: NODE_ENV
+        value: production
+      - key: GOOGLE_CLOUD_PROJECT_ID
+        sync: false  # Set this in Render dashboard
+      - key: GOOGLE_CLOUD_BUCKET_NAME
+        sync: false  # Set this in Render dashboard
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/secrets/key.json  # Render's Secret Files location
+      - key: NEXT_PUBLIC_API_URL
+        sync: false  # Set to your Render URL after deployment
+    # Persistent disk for uploads and renders
+    disk:
+      name: uploads-storage
+      mountPath: /opt/render/project/src/public
+      sizeGB: 10  # Adjust size as needed ($0.25/GB/month)
+    # Health check endpoint
+    healthCheckPath: /api/health

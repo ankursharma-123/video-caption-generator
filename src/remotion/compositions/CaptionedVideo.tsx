@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbsoluteFill, Video, staticFile, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Video, useVideoConfig } from 'remotion';
 import { Captions, CaptionSegment } from './Captions';
 
 export interface CaptionedVideoProps {
@@ -15,25 +15,17 @@ export const CaptionedVideo: React.FC<CaptionedVideoProps> = ({
 }) => {
   const { width, height } = useVideoConfig();
   
-  // Handle video source based on environment
-  let videoSource: string;
-  
-  if (videoSrc.startsWith('http://') || videoSrc.startsWith('https://')) {
-    // Already a full URL
-    videoSource = videoSrc;
-  } else if (typeof window !== 'undefined' && window.location) {
-    // Running in browser - use absolute URL
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
-    videoSource = `${baseUrl}${videoSrc}`;
-  } else {
-    // Fallback for SSR/build time
-    videoSource = videoSrc.startsWith('/') ? staticFile(videoSrc.slice(1)) : staticFile(videoSrc);
-  }
+  // Video is now always a full URL from GCS, no need for staticFile()
+  // Just use the URL directly
   
   return (
     <AbsoluteFill>
       <AbsoluteFill>
-        <Video src={videoSource} style={{ width, height }} />
+        <Video 
+          src={videoSrc} 
+          style={{ width, height }}
+          crossOrigin="anonymous"
+        />
       </AbsoluteFill>
       <Captions captions={captions} style={style} />
     </AbsoluteFill>

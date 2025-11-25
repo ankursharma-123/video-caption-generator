@@ -24,18 +24,20 @@ export async function uploadToGCS(
   try {
     const bucket = storage.bucket(BUCKET_NAME);
     
-    // Upload the file
-    const [file] = await bucket.upload(filePath, {
+    // Upload the file with public access (if uniform bucket-level access is enabled)
+    const uploadOptions: any = {
       destination: destination,
       metadata: {
         cacheControl: 'public, max-age=31536000',
       },
-    });
+    };
 
-    // Make file publicly accessible if requested
+    // If makePublic is true, set predefined ACL during upload
     if (makePublic) {
-      await file.makePublic();
+      uploadOptions.predefinedAcl = 'publicRead';
     }
+
+    const [file] = await bucket.upload(filePath, uploadOptions);
 
     const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${destination}`;
     const gcsUri = `gs://${BUCKET_NAME}/${destination}`;
@@ -45,7 +47,30 @@ export async function uploadToGCS(
       gcsUri,
       fileName: destination,
     };
-  } catch (error) {
+  } catch (error: any) {
+    // If uniform bucket-level access is enabled, we can't use predefinedAcl
+    // Check if it's that specific error and handle gracefully
+    if (error.message && error.message.includes('uniform bucket-level access')) {
+      console.log('Note: Bucket has uniform access enabled. Files will use bucket-level permissions.');
+      
+      // Upload without ACL
+      const [file] = await bucket.upload(filePath, {
+        destination: destination,
+        metadata: {
+          cacheControl: 'public, max-age=31536000',
+        },
+      });
+
+      const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${destination}`;
+      const gcsUri = `gs://${BUCKET_NAME}/${destination}`;
+
+      return {
+        publicUrl,
+        gcsUri,
+        fileName: destination,
+      };
+    }
+    
     console.error('Error uploading to GCS:', error);
     throw error;
   }

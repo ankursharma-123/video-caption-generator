@@ -65,7 +65,7 @@ export default async function handler(
     await runMiddleware(req, res, uploadMiddleware);
 
     const file = (req as any).file;
-    if (!file) {
+    if (!file || !file.path) {
       return res.status(400).json({ error: ERROR_MESSAGES.NO_FILE_UPLOADED });
     }
 
@@ -80,9 +80,9 @@ export default async function handler(
     
     const videoFileName = `videos/${timestamp}-${sanitizedFilename}`;
     
-    // Upload video to Google Cloud Storage
+    // Upload video to Google Cloud Storage (videoTempPath is guaranteed to be set here)
     console.log('Uploading video to Google Cloud Storage...');
-    const videoUpload = await uploadToGCS(videoTempPath, videoFileName, true);
+    const videoUpload = await uploadToGCS(videoTempPath!, videoFileName, true);
     uploadedVideoFileName = videoUpload.fileName;
     
     console.log('Video uploaded to GCS:', videoUpload.publicUrl);
@@ -90,7 +90,7 @@ export default async function handler(
     // Extract audio to temporary location
     audioTempPath = `/tmp/uploads/${timestamp}-audio.mp3`;
     console.log('Extracting audio from video...');
-    await extractAudioFromVideo(videoTempPath, audioTempPath);
+    await extractAudioFromVideo(videoTempPath!, audioTempPath);
 
     // Transcribe audio (this also uploads audio to GCS internally)
     console.log('Transcribing audio...');

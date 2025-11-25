@@ -21,9 +21,9 @@ export async function uploadToGCS(
   destination: string,
   makePublic: boolean = true
 ): Promise<UploadResult> {
+  const bucket = storage.bucket(BUCKET_NAME);
+  
   try {
-    const bucket = storage.bucket(BUCKET_NAME);
-    
     // Upload the file with public access (if uniform bucket-level access is enabled)
     const uploadOptions: any = {
       destination: destination,

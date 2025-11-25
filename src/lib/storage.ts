@@ -39,7 +39,9 @@ export async function uploadToGCS(
 
     const [file] = await bucket.upload(filePath, uploadOptions);
 
-    const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${destination}`;
+    // URL encode the filename for the public URL
+    const encodedDestination = destination.split('/').map(part => encodeURIComponent(part)).join('/');
+    const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${encodedDestination}`;
     const gcsUri = `gs://${BUCKET_NAME}/${destination}`;
 
     return {
@@ -61,7 +63,9 @@ export async function uploadToGCS(
         },
       });
 
-      const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${destination}`;
+      // URL encode the filename for the public URL
+      const encodedDestination = destination.split('/').map(part => encodeURIComponent(part)).join('/');
+      const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${encodedDestination}`;
       const gcsUri = `gs://${BUCKET_NAME}/${destination}`;
 
       return {

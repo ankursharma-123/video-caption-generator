@@ -71,7 +71,14 @@ export default async function handler(
 
     videoTempPath = file.path;
     const timestamp = Date.now();
-    const videoFileName = `videos/${timestamp}-${file.originalname}`;
+    
+    // Sanitize filename: remove spaces, special chars, keep only alphanumeric, dots, dashes, underscores
+    const sanitizedFilename = file.originalname
+      .replace(/\s+/g, '-')  // Replace spaces with dashes
+      .replace(/[^a-zA-Z0-9.-_]/g, '')  // Remove special characters
+      .toLowerCase();
+    
+    const videoFileName = `videos/${timestamp}-${sanitizedFilename}`;
     
     // Upload video to Google Cloud Storage
     console.log('Uploading video to Google Cloud Storage...');

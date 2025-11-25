@@ -3,7 +3,6 @@ import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import path from 'path';
 import fs from 'fs';
-import { setRenderProgress, resetRenderProgress, mapRenderingProgress } from '@/lib/progress';
 import { uploadToGCS } from '@/lib/storage';
 import { 
   ERROR_MESSAGES, 
@@ -15,7 +14,6 @@ import {
 import {
   ensureDirectoryExists,
   generateTimestampedFilename,
-  delay,
 } from '@/lib/utils';
 import type { RenderRequest, RenderResponse, ErrorResponse } from '@/lib/types';
 
@@ -49,8 +47,6 @@ export default async function handler(
       return res.status(400).json({ error: ERROR_MESSAGES.MISSING_PARAMETERS });
     }
 
-    resetRenderProgress();
-
     // Video is now a GCS URL, no need to check local filesystem
     console.log('Rendering video from:', videoPath);
 
@@ -59,14 +55,14 @@ export default async function handler(
     const fps = RENDER_CONFIG.FPS;
 
     // Bundle the Remotion project
-    setRenderProgress(10);
+    console.log('Bundling Remotion project...');
     const bundleLocation = await bundle({
       entryPoint: path.join(process.cwd(), PATHS.REMOTION_ENTRY),
       webpackOverride: (config) => config,
     });
 
     // Select composition with input props
-    setRenderProgress(RENDER_CONFIG.BUNDLING_PROGRESS_END);
+    console.log('Selecting composition...');
     const composition = await selectComposition({
       serveUrl: bundleLocation,
       id: PATHS.COMPOSITION_ID,
@@ -83,6 +79,7 @@ export default async function handler(
     tempOutputPath = path.join(tempDir, generateTimestampedFilename());
 
     // Render the video
+    console.log('Rendering video with captions...');
     await renderMedia({
       composition: {
         ...composition,
@@ -97,44 +94,27 @@ export default async function handler(
         captions,
         style: style || CAPTION_STYLES.BOTTOM_CENTERED,
       },
-      onProgress: ({ progress }) => {
-        const mappedProgress = mapRenderingProgress(
-          progress,
-          RENDER_CONFIG.BUNDLING_PROGRESS_END,
-          RENDER_CONFIG.RENDERING_PROGRESS_WEIGHT
-        );
-        setRenderProgress(mappedProgress);
-      },
     });
-
-    setRenderProgress(95);
     
     // Upload rendered video to GCS
     console.log('Uploading rendered video to GCS...');
     const timestamp = Date.now();
     const gcsFileName = `renders/${timestamp}-rendered.mp4`;
     const uploadResult = await uploadToGCS(tempOutputPath, gcsFileName, true);
-    
-    setRenderProgress(100);
 
     // Clean up temporary file
     if (tempOutputPath && fs.existsSync(tempOutputPath)) {
       fs.unlinkSync(tempOutputPath);
     }
 
-    // Small delay to ensure frontend receives the 100% update
-    await delay(RENDER_CONFIG.PROGRESS_ENSURE_COMPLETION_DELAY_MS);
+    console.log('Video rendered successfully:', uploadResult.publicUrl);
 
     res.status(200).json({
       success: true,
       outputPath: uploadResult.publicUrl, // Return GCS public URL
     });
-
-    // Clean up progress file after response is sent
-    setTimeout(() => resetRenderProgress(), RENDER_CONFIG.PROGRESS_CLEANUP_DELAY_MS);
   } catch (error: any) {
     console.error('Error rendering video:', error);
-    resetRenderProgress();
     
     // Clean up temporary file on error
     if (tempOutputPath && fs.existsSync(tempOutputPath)) {

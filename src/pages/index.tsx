@@ -22,7 +22,6 @@ export default function Home() {
   const [status, setStatus] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [renderLoading, setRenderLoading] = useState(false);
-  const [renderProgress, setRenderProgress] = useState(0);
   const [renderedVideoPath, setRenderedVideoPath] = useState<string>('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,21 +88,8 @@ export default function Home() {
     }
 
     setRenderLoading(true);
-    setRenderProgress(0);
-    setStatus('');
+    setStatus('Rendering video with captions...');
     setError('');
-
-    // Poll for progress
-    const progressInterval = setInterval(async () => {
-      try {
-        const progressResponse = await axios.get(API_ENDPOINTS.RENDER_PROGRESS);
-        if (progressResponse.data.progress !== undefined) {
-          setRenderProgress(progressResponse.data.progress);
-        }
-      } catch (err) {
-        // Ignore errors during progress polling
-      }
-    }, RENDER_CONFIG.PROGRESS_POLL_INTERVAL_MS);
 
     try {
       const response = await axios.post(API_ENDPOINTS.RENDER, {
@@ -112,18 +98,13 @@ export default function Home() {
         style: selectedStyle,
       });
 
-      clearInterval(progressInterval);
-      setRenderProgress(100);
       setRenderedVideoPath(response.data.outputPath);
       setStatus('Video rendered successfully!');
     } catch (err: any) {
-      clearInterval(progressInterval);
       setError(err.response?.data?.details || ERROR_MESSAGES.RENDER_FAILED);
       setStatus('');
-      setRenderProgress(0);
     } finally {
       setRenderLoading(false);
-      setTimeout(() => setRenderProgress(0), RENDER_CONFIG.PROGRESS_RESET_DELAY_MS);
     }
   };
 
@@ -256,20 +237,6 @@ export default function Home() {
             >
               {renderLoading ? 'Rendering...' : 'Export Video'}
             </button>
-
-            {renderLoading && (
-              <div className={styles.progressContainer}>
-                <div className={styles.progressBar}>
-                  <div 
-                    className={styles.progressFill} 
-                    style={{ width: `${renderProgress}%` }}
-                  >
-                    <span className={styles.progressText}>{renderProgress.toFixed(1)}%</span>
-                  </div>
-                </div>
-                <p className={styles.progressLabel}>Rendering video with captions...</p>
-              </div>
-            )}
 
             {renderedVideoPath && (
               <div className={styles.downloadSection}>

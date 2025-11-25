@@ -2,9 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import { FILE_CONFIG } from './constants';
 import { ProgressData } from './types';
-import { clamp } from './utils';
+import { clamp, ensureDirectoryExists } from './utils';
 
-const PROGRESS_FILE = path.join(process.cwd(), 'public', FILE_CONFIG.PROGRESS_FILE_NAME);
+// Use /tmp directory for progress file on serverless/production environments
+const PROGRESS_DIR = process.env.NODE_ENV === 'production' 
+  ? '/tmp' 
+  : path.join(process.cwd(), 'public');
+
+const PROGRESS_FILE = path.join(PROGRESS_DIR, FILE_CONFIG.PROGRESS_FILE_NAME);
 
 /**
  * Writes render progress to a file for cross-instance communication
@@ -17,6 +22,8 @@ export function setRenderProgress(progress: number): void {
   };
 
   try {
+    // Ensure directory exists
+    ensureDirectoryExists(PROGRESS_DIR);
     fs.writeFileSync(PROGRESS_FILE, JSON.stringify(progressData));
   } catch (error) {
     console.error('Error writing progress:', error);

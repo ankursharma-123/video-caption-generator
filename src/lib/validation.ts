@@ -1,8 +1,5 @@
 import { execSync } from 'child_process';
 
-/**
- * Checks if FFmpeg is installed and available
- */
 export function isFFmpegInstalled(): boolean {
   try {
     execSync('ffmpeg -version', { stdio: 'ignore' });
@@ -12,9 +9,6 @@ export function isFFmpegInstalled(): boolean {
   }
 }
 
-/**
- * Validates Google Cloud configuration
- */
 export function validateGoogleCloudConfig(): { isValid: boolean; error?: string; details?: string } {
   if (!process.env.GOOGLE_CLOUD_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT_ID === 'your-project-id') {
     return {

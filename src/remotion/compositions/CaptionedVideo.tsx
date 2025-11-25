@@ -15,9 +15,7 @@ export const CaptionedVideo: React.FC<CaptionedVideoProps> = ({
 }) => {
   const { width, height } = useVideoConfig();
   
-  // Video is now always a full URL from GCS, no need for staticFile()
-  // Just use the URL directly
-  
+
   return (
     <AbsoluteFill>
       <AbsoluteFill>

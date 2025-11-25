@@ -24,10 +24,7 @@ export const config = {
   },
 };
 
-/**
- * POST /api/upload
- * Uploads a video to GCS, extracts audio, and generates captions using Google Cloud Speech-to-Text
- */
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<UploadResponse | ErrorResponse>
@@ -41,10 +38,9 @@ export default async function handler(
   let uploadedVideoFileName: string | null = null;
 
   try {
-    // Initialize Google Cloud credentials (for Vercel/Render deployment)
+
     initializeGoogleCredentials();
 
-    // Validate FFmpeg installation
     if (!isFFmpegInstalled()) {
       return res.status(500).json({
         error: ERROR_MESSAGES.FFMPEG_NOT_INSTALLED,
@@ -52,7 +48,6 @@ export default async function handler(
       });
     }
 
-    // Validate Google Cloud configuration
     const gcpValidation = validateGoogleCloudConfig();
     if (!gcpValidation.isValid) {
       return res.status(500).json({
@@ -61,7 +56,6 @@ export default async function handler(
       });
     }
 
-    // Handle file upload to temporary location
     await runMiddleware(req, res, uploadMiddleware);
 
     const file = (req as any).file;
@@ -72,31 +66,26 @@ export default async function handler(
     videoTempPath = file.path;
     const timestamp = Date.now();
     
-    // Sanitize filename: remove spaces, special chars, keep only alphanumeric, dots, dashes, underscores
     const sanitizedFilename = file.originalname
-      .replace(/\s+/g, '-')  // Replace spaces with dashes
-      .replace(/[^a-zA-Z0-9.-_]/g, '')  // Remove special characters
+      .replace(/\s+/g, '-')  
+      .replace(/[^a-zA-Z0-9.-_]/g, '')  
       .toLowerCase();
     
     const videoFileName = `videos/${timestamp}-${sanitizedFilename}`;
     
-    // Upload video to Google Cloud Storage (videoTempPath is guaranteed to be set here)
     console.log('Uploading video to Google Cloud Storage...');
     const videoUpload = await uploadToGCS(videoTempPath!, videoFileName, true);
     uploadedVideoFileName = videoUpload.fileName;
     
     console.log('Video uploaded to GCS:', videoUpload.publicUrl);
 
-    // Extract audio to temporary location
     audioTempPath = `/tmp/uploads/${timestamp}-audio.mp3`;
     console.log('Extracting audio from video...');
     await extractAudioFromVideo(videoTempPath!, audioTempPath);
 
-    // Transcribe audio (this also uploads audio to GCS internally)
     console.log('Transcribing audio...');
     const captions = await transcribeAudio(audioTempPath);
 
-    // Clean up temporary files
     if (videoTempPath && fs.existsSync(videoTempPath)) {
       await unlinkAsync(videoTempPath);
     }
@@ -104,16 +93,14 @@ export default async function handler(
       await unlinkAsync(audioTempPath);
     }
 
-    // Return the public URL for the video
     res.status(200).json({
       success: true,
-      videoPath: videoUpload.publicUrl, // Public GCS URL
+      videoPath: videoUpload.publicUrl, 
       captions,
     });
   } catch (error: any) {
     console.error('Error processing video:', error);
     
-    // Clean up temporary files on error
     if (videoTempPath && fs.existsSync(videoTempPath)) {
       await unlinkAsync(videoTempPath).catch(console.error);
     }
@@ -121,7 +108,6 @@ export default async function handler(
       await unlinkAsync(audioTempPath).catch(console.error);
     }
     
-    // Clean up uploaded video from GCS on error
     if (uploadedVideoFileName) {
       await deleteFromGCS(uploadedVideoFileName);
     }

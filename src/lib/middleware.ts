@@ -1,9 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { promisify } from 'util';
 
-/**
- * Runs Express-style middleware in Next.js API routes
- */
+
 export function runMiddleware(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -19,7 +17,5 @@ export function runMiddleware(
   });
 }
 
-/**
- * Promise-based file unlink
- */
+
 export const unlinkAsync = promisify(require('fs').unlink);

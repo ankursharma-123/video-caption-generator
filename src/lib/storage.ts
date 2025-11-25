@@ -13,9 +13,7 @@ export interface UploadResult {
   fileName: string;
 }
 
-/**
- * Upload a file to Google Cloud Storage
- */
+
 export async function uploadToGCS(
   filePath: string,
   destination: string,
@@ -24,31 +22,27 @@ export async function uploadToGCS(
   const bucket = storage.bucket(BUCKET_NAME);
   
   try {
-    // Determine content type based on file extension
     const contentType = destination.endsWith('.mp4') ? 'video/mp4' : 
                        destination.endsWith('.mp3') ? 'audio/mpeg' : 
                        'application/octet-stream';
     
-    // Upload the file with public access (if uniform bucket-level access is enabled)
     const uploadOptions: any = {
       destination: destination,
       metadata: {
         contentType: contentType,
         cacheControl: 'public, max-age=31536000',
         metadata: {
-          firebaseStorageDownloadTokens: undefined, // Prevent Firebase token
+          firebaseStorageDownloadTokens: undefined, 
         },
       },
     };
 
-    // If makePublic is true, set predefined ACL during upload
     if (makePublic) {
       uploadOptions.predefinedAcl = 'publicRead';
     }
 
     const [file] = await bucket.upload(filePath, uploadOptions);
 
-    // URL encode the filename for the public URL
     const encodedDestination = destination.split('/').map(part => encodeURIComponent(part)).join('/');
     const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${encodedDestination}`;
     const gcsUri = `gs://${BUCKET_NAME}/${destination}`;
@@ -59,17 +53,13 @@ export async function uploadToGCS(
       fileName: destination,
     };
   } catch (error: any) {
-    // If uniform bucket-level access is enabled, we can't use predefinedAcl
-    // Check if it's that specific error and handle gracefully
     if (error.message && error.message.includes('uniform bucket-level access')) {
       console.log('Note: Bucket has uniform access enabled. Files will use bucket-level permissions.');
-      
-      // Determine content type
+ 
       const contentType = destination.endsWith('.mp4') ? 'video/mp4' : 
                          destination.endsWith('.mp3') ? 'audio/mpeg' : 
                          'application/octet-stream';
       
-      // Upload without ACL
       const [file] = await bucket.upload(filePath, {
         destination: destination,
         metadata: {
@@ -78,7 +68,6 @@ export async function uploadToGCS(
         },
       });
 
-      // URL encode the filename for the public URL
       const encodedDestination = destination.split('/').map(part => encodeURIComponent(part)).join('/');
       const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${encodedDestination}`;
       const gcsUri = `gs://${BUCKET_NAME}/${destination}`;
@@ -95,22 +84,17 @@ export async function uploadToGCS(
   }
 }
 
-/**
- * Delete a file from Google Cloud Storage
- */
+
 export async function deleteFromGCS(fileName: string): Promise<void> {
   try {
     await storage.bucket(BUCKET_NAME).file(fileName).delete();
     console.log(`Deleted ${fileName} from GCS`);
   } catch (error) {
     console.error('Error deleting from GCS:', error);
-    // Don't throw - deletion failures shouldn't break the flow
   }
 }
 
-/**
- * Get a signed URL for temporary access (useful for private files)
- */
+
 export async function getSignedUrl(
   fileName: string,
   expiresIn: number = 3600 // 1 hour default
@@ -131,9 +115,7 @@ export async function getSignedUrl(
   }
 }
 
-/**
- * Check if a file exists in GCS
- */
+
 export async function fileExistsInGCS(fileName: string): Promise<boolean> {
   try {
     const [exists] = await storage.bucket(BUCKET_NAME).file(fileName).exists();

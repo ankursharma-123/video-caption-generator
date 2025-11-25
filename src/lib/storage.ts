@@ -24,11 +24,20 @@ export async function uploadToGCS(
   const bucket = storage.bucket(BUCKET_NAME);
   
   try {
+    // Determine content type based on file extension
+    const contentType = destination.endsWith('.mp4') ? 'video/mp4' : 
+                       destination.endsWith('.mp3') ? 'audio/mpeg' : 
+                       'application/octet-stream';
+    
     // Upload the file with public access (if uniform bucket-level access is enabled)
     const uploadOptions: any = {
       destination: destination,
       metadata: {
+        contentType: contentType,
         cacheControl: 'public, max-age=31536000',
+        metadata: {
+          firebaseStorageDownloadTokens: undefined, // Prevent Firebase token
+        },
       },
     };
 
@@ -55,10 +64,16 @@ export async function uploadToGCS(
     if (error.message && error.message.includes('uniform bucket-level access')) {
       console.log('Note: Bucket has uniform access enabled. Files will use bucket-level permissions.');
       
+      // Determine content type
+      const contentType = destination.endsWith('.mp4') ? 'video/mp4' : 
+                         destination.endsWith('.mp3') ? 'audio/mpeg' : 
+                         'application/octet-stream';
+      
       // Upload without ACL
       const [file] = await bucket.upload(filePath, {
         destination: destination,
         metadata: {
+          contentType: contentType,
           cacheControl: 'public, max-age=31536000',
         },
       });

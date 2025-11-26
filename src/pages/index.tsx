@@ -7,10 +7,12 @@ import styles from '@/styles/Home.module.css';
 import { 
   API_ENDPOINTS, 
   CAPTION_STYLES, 
-  RENDER_CONFIG, 
-  ERROR_MESSAGES 
+  ERROR_MESSAGES,
 } from '@/lib/constants';
 import type { CaptionSegment } from '@/lib/types';
+
+// Size threshold for direct GCS upload (in bytes) - 30MB
+const DIRECT_UPLOAD_THRESHOLD = 30 * 1024 * 1024;
 
 export default function Home() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -43,42 +45,100 @@ export default function Home() {
 
     setLoading(true);
     setUploadProgress(0);
-    setStatus('Uploading video...');
     setError('');
 
-    const formData = new FormData();
-    formData.append('video', videoFile);
-
     try {
-      const response = await axios.post(API_ENDPOINTS.UPLOAD, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            // Upload is typically 0-70%, then processing takes 70-100%
-            const percentCompleted = Math.round((progressEvent.loaded * 70) / progressEvent.total);
-            setUploadProgress(percentCompleted);
-            
-            if (percentCompleted >= 70) {
-              setStatus('Processing video and generating captions...');
-            }
-          }
-        },
-      });
-
-      setUploadProgress(100);
-      setVideoPath(response.data.videoPath);
-      setCaptions(response.data.captions);
-      setStatus('Captions generated successfully!');
+      // Use direct GCS upload for large files (> 30MB)
+      if (videoFile.size > DIRECT_UPLOAD_THRESHOLD) {
+        await handleDirectGCSUpload();
+      } else {
+        await handleFormDataUpload();
+      }
     } catch (err: any) {
-      setError(err.response?.data?.details || ERROR_MESSAGES.UPLOAD_FAILED);
+      setError(err.response?.data?.details || err.message || ERROR_MESSAGES.UPLOAD_FAILED);
       setStatus('');
       setUploadProgress(0);
     } finally {
       setLoading(false);
       setTimeout(() => setUploadProgress(0), 2000);
     }
+  };
+
+  // Direct upload to GCS for large files (bypasses Cloud Run 32MB limit)
+  const handleDirectGCSUpload = async () => {
+    if (!videoFile) return;
+
+    setStatus('Getting upload URL...');
+    
+    // Step 1: Get signed upload URL from our API
+    const urlResponse = await axios.post(API_ENDPOINTS.GENERATE_UPLOAD_URL, {
+      fileName: videoFile.name,
+      contentType: videoFile.type || 'video/mp4',
+    });
+
+    const { uploadUrl, fileName: gcsFileName, publicUrl } = urlResponse.data;
+
+    setStatus('Uploading video directly to cloud storage...');
+
+    // Step 2: Upload directly to GCS using the signed URL
+    await axios.put(uploadUrl, videoFile, {
+      headers: {
+        'Content-Type': videoFile.type || 'video/mp4',
+      },
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.total) {
+          // Upload is 0-60%, processing is 60-100%
+          const percentCompleted = Math.round((progressEvent.loaded * 60) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+        }
+      },
+    });
+
+    setUploadProgress(65);
+    setStatus('Processing video and generating captions...');
+
+    // Step 3: Call process-video API to transcribe
+    const processResponse = await axios.post(API_ENDPOINTS.PROCESS_VIDEO, {
+      gcsFileName,
+      publicUrl,
+    });
+
+    setUploadProgress(100);
+    setVideoPath(processResponse.data.videoPath);
+    setCaptions(processResponse.data.captions);
+    setStatus('Captions generated successfully!');
+  };
+
+  // Standard form data upload for smaller files
+  const handleFormDataUpload = async () => {
+    if (!videoFile) return;
+
+    setStatus('Uploading video...');
+
+    const formData = new FormData();
+    formData.append('video', videoFile);
+
+    const response = await axios.post(API_ENDPOINTS.UPLOAD, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.total) {
+          // Upload is typically 0-70%, then processing takes 70-100%
+          const percentCompleted = Math.round((progressEvent.loaded * 70) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+          
+          if (percentCompleted >= 70) {
+            setStatus('Processing video and generating captions...');
+          }
+        }
+      },
+    });
+
+    setUploadProgress(100);
+    setVideoPath(response.data.videoPath);
+    setCaptions(response.data.captions);
+    setStatus('Captions generated successfully!');
   };
 
   const handleRender = async () => {

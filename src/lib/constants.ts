@@ -2,29 +2,20 @@
 export const API_ENDPOINTS = {
   UPLOAD: '/api/upload',
   RENDER: '/api/render',
-  RENDER_PROGRESS: '/api/render-progress',
+  GENERATE_UPLOAD_URL: '/api/generate-upload-url',
+  PROCESS_VIDEO: '/api/process-video',
 } as const;
 
 
 export const RENDER_CONFIG = {
   FPS: 30,
   DEFAULT_DURATION_SECONDS: 10,
-  PROGRESS_POLL_INTERVAL_MS: 500,
-  PROGRESS_RESET_DELAY_MS: 2000,
-  PROGRESS_CLEANUP_DELAY_MS: 1000,
-  PROGRESS_ENSURE_COMPLETION_DELAY_MS: 500,
-  
-
-  BUNDLING_PROGRESS_START: 0,
-  BUNDLING_PROGRESS_END: 20,
-  RENDERING_PROGRESS_WEIGHT: 0.8,
 } as const;
 
 
 export const FILE_CONFIG = {
   MAX_UPLOAD_SIZE_MB: 100,
   API_BODY_SIZE_LIMIT: '10mb',
-  PROGRESS_FILE_NAME: '.render-progress.json',
 } as const;
 
 

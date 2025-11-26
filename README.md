@@ -1,148 +1,88 @@
-# Remotion Captioning Platform
+# Video Caption Generator
 
-A full-stack web application that allows users to upload MP4 videos, automatically generate captions using Google Cloud Speech-to-Text, and render those captions onto videos using Remotion. The application supports Hinglish (Hindi + English) with proper font rendering and offers multiple caption styles.
+A web application that auto-generates captions for videos using Google Cloud Speech-to-Text and renders them with Remotion.
 
-## 🌟 Features
+## Features
 
-- **Video Upload**: Clean UI for uploading .mp4 video files
-- **Auto-Caption Generation**: Uses Google Cloud Speech-to-Text API for accurate transcription
-- **Hinglish Support**: Proper rendering of mixed Hindi (Devanagari) and English text using Noto Sans fonts
-- **Multiple Caption Styles**:
-  - Bottom-centered subtitles (standard)
-  - Top-bar captions (news-style)
-  - Karaoke-style highlighting (word-by-word)
-- **Real-time Preview**: Preview captions on video using Remotion Player
-- **Video Export**: Render and download the final captioned video as MP4
+- **Auto-Caption Generation**: Google Cloud Speech-to-Text API
+- **Multiple Caption Styles**: Bottom-centered, top-bar, karaoke
+- **Real-time Preview**: Remotion Player
+- **Video Export**: Render captioned videos as MP4
+- **Large File Support**: Direct GCS upload for files >30MB
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Frontend**: Next.js 14, React 18, TypeScript
-- **Video Rendering**: Remotion 4.x
-- **Speech-to-Text**: Google Cloud Speech-to-Text API
-- **Storage**: Google Cloud Storage
-- **Audio Processing**: FFmpeg via fluent-ffmpeg
-- **Styling**: CSS Modules
-- **Fonts**: Noto Sans, Noto Sans Devanagari
+- Next.js 14, React 18, TypeScript
+- Remotion 4.x for video rendering
+- Google Cloud Speech-to-Text & Cloud Storage
+- FFmpeg for audio extraction
 
-## 📋 Prerequisites
+## Setup
 
-- **Node.js**: v18.x or higher
-- **npm**: v9.x or higher
-- **FFmpeg**: Installed and available in system PATH
-- **Google Cloud Platform Account** with:
+### Prerequisites
+
+- Node.js v18+
+- FFmpeg installed
+- Google Cloud account with:
   - Speech-to-Text API enabled
-  - Cloud Storage bucket created
-  - Service account with appropriate permissions
+  - Cloud Storage bucket
+  - Service account JSON key
 
-## 🚀 Setup Instructions
-
-### 1. Clone the Repository
-
-```bash
-git clone <repository-url>
-cd remotion-caption-app
-```
-
-### 2. Install Dependencies
+### Installation
 
 ```bash
 npm install
 ```
 
-### 3. Install FFmpeg
+### Environment Variables
 
-**Windows:**
-```bash
-# Using Chocolatey
-choco install ffmpeg
+Create `.env` file:
 
-# Or download from https://ffmpeg.org/download.html
-```
-
-**macOS:**
-```bash
-brew install ffmpeg
-```
-
-**Linux:**
-```bash
-sudo apt-get install ffmpeg
-```
-
-### 4. Google Cloud Setup
-
-1. Create a project in [Google Cloud Console](https://console.cloud.google.com/)
-2. Enable the following APIs:
-   - Cloud Speech-to-Text API
-   - Cloud Storage API
-3. Create a service account:
-   - Go to IAM & Admin > Service Accounts
-   - Create a new service account
-   - Grant roles: "Speech-to-Text Admin" and "Storage Object Admin"
-   - Create and download a JSON key file
-4. Create a Cloud Storage bucket:
-   - Go to Cloud Storage
-   - Create a new bucket (e.g., "captiongenerator")
-   - Set appropriate permissions
-
-5. Place your service account key file as `key.json` in the project root
-
-### 5. Environment Variables
-
-Copy `.env.example` to `.env` and fill in your details:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env`:
 ```env
 GOOGLE_APPLICATION_CREDENTIALS=./key.json
 GOOGLE_CLOUD_PROJECT_ID=your-project-id
 GOOGLE_CLOUD_BUCKET_NAME=your-bucket-name
-NEXT_PUBLIC_API_URL=http://localhost:3000
 ```
 
-### 6. Run Development Server
+### Run Development Server
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+## Docker Deployment
 
-## 📖 Usage
+### Build
 
-1. **Upload Video**: Click "Choose Video File" and select an MP4 file
-2. **Generate Captions**: Click "Auto-generate Captions" button
-   - The app will extract audio from the video
-   - Send audio to Google Cloud Speech-to-Text
-   - Display generated captions with timestamps
-3. **Select Style**: Choose from three caption styles:
-   - Bottom Centered: Traditional subtitle style at the bottom
-   - Top Bar: News-style captions at the top
-   - Karaoke Style: Word-by-word highlighting effect
-4. **Preview**: View the video with captions in the Remotion Player
-5. **Export**: Click "Export Video" to render the final video with captions
-6. **Download**: Download the rendered MP4 file
+```bash
+docker build -t video-caption-generator .
+```
 
-## 🎨 Caption Styles
+### Run
 
-### Bottom-Centered
-- Traditional subtitle placement at the bottom
-- Semi-transparent black background
-- White text with proper line spacing
-- Best for general content
+```bash
+docker run -p 3000:3000 \
+  -e GOOGLE_CREDENTIALS_BASE64="$(base64 -w 0 key.json)" \
+  -e GOOGLE_CLOUD_PROJECT_ID=your-project-id \
+  -e GOOGLE_CLOUD_BUCKET_NAME=your-bucket-name \
+  video-caption-generator
+```
 
-### Top-Bar
-- Full-width bar at the top
-- News broadcast style
-- Solid dark background
-- Ideal for informative content
+## GCP Cloud Run Deployment
 
-### Karaoke
-- Word-by-word highlighting
-- Yellow color for active word
-- Center-aligned
-- Great for music videos and lyrics
+1. Push image to Artifact Registry
+2. Deploy to Cloud Run with:
+   - 4GB memory, 2 CPU
+   - 1-hour timeout
+   - Secret Manager for credentials
 
+## API Endpoints
+
+- `POST /api/upload` - Upload video and generate captions (files <30MB)
+- `POST /api/generate-upload-url` - Get signed URL for direct GCS upload
+- `POST /api/process-video` - Process video from GCS
+- `POST /api/render` - Render video with captions
+
+## License
+
+MIT

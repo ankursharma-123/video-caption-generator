@@ -26,17 +26,7 @@ export interface UploadResponse {
   captions: CaptionSegment[];
 }
 
-export interface ProgressResponse {
-  progress: number;
-}
-
-export interface ProgressData {
-  progress: number;
-  timestamp: number;
-}
-
 export interface ErrorResponse {
   error: string;
   details?: string;
-  path?: string;
 }

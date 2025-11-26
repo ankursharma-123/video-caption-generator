@@ -35,16 +35,17 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# render progress tracking
-public/.render-progress.json
-
 # uploads and renders
-public/uploads/
-public/renders/
+public/uploads/*
+public/renders/*
+!public/uploads/.gitkeep
+!public/renders/.gitkeep
 
 # Google Cloud credentials
 key.json
-google_credentials_base64.txt
-DEPLOYMENT_INSTRUCTIONS.txt
-RENDER_DEPLOYMENT_INSTRUCTIONS.txt
+*.json.bak
 
+# Video files
+*.mp4
+*.mp3
+*.wav

@@ -56,7 +56,10 @@ export default async function handler(
     });
 
 
+    // Let Remotion download and use its own Chrome Headless Shell
+    // System Chromium doesn't support the old headless mode that Remotion requires
     console.log('Selecting composition...');
+    
     const composition = await selectComposition({
       serveUrl: bundleLocation,
       id: PATHS.COMPOSITION_ID,
@@ -64,6 +67,9 @@ export default async function handler(
         videoSrc: videoPath,
         captions,
         style: style || CAPTION_STYLES.BOTTOM_CENTERED,
+      },
+      chromiumOptions: {
+        enableMultiProcessOnLinux: true,
       },
     });
 
@@ -85,6 +91,9 @@ export default async function handler(
         videoSrc: videoPath,
         captions,
         style: style || CAPTION_STYLES.BOTTOM_CENTERED,
+      },
+      chromiumOptions: {
+        enableMultiProcessOnLinux: true,
       },
     });
 

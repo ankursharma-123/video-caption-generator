@@ -1,0 +1,53 @@
+# dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# next.js
+.next/
+out/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env
+.env*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+
+# git
+.git
+.gitignore
+
+# uploads and renders
+public/uploads/*
+public/renders/*
+output.mp4
+test_video.mp4
+
+# credentials (should be mounted as secrets)
+key.json
+google_credentials_base64.txt
+
+# documentation and scripts
+README.md
+DEPLOYMENT.md
+ROADMAP.md
+SETUP.md
+QUICK_REFERENCE.md
+DEPLOYMENT_INSTRUCTIONS.txt
+*.ps1
+*.sh
+cors.json

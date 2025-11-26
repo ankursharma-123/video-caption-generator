@@ -4,7 +4,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { runMiddleware, unlinkAsync } from '@/lib/middleware';
-import { isFFmpegInstalled, validateGoogleCloudConfig } from '@/lib/validation';
+import {validateGoogleCloudConfig } from '@/lib/validation';
 import { initializeGoogleCredentials } from '@/lib/credentials';
 import { uploadToGCS, deleteFromGCS } from '@/lib/storage';
 import { ERROR_MESSAGES, FILE_CONFIG, PATHS } from '@/lib/constants';
@@ -41,13 +41,6 @@ export default async function handler(
 
     initializeGoogleCredentials();
 
-    if (!isFFmpegInstalled()) {
-      return res.status(500).json({
-        error: ERROR_MESSAGES.FFMPEG_NOT_INSTALLED,
-        details: 'FFmpeg is required to extract audio from video. Please install FFmpeg from https://ffmpeg.org or run: choco install ffmpeg',
-      });
-    }
-
     const gcpValidation = validateGoogleCloudConfig();
     if (!gcpValidation.isValid) {
       return res.status(500).json({
@@ -74,7 +67,7 @@ export default async function handler(
     const videoFileName = `videos/${timestamp}-${sanitizedFilename}`;
     
     console.log('Uploading video to Google Cloud Storage...');
-    const videoUpload = await uploadToGCS(videoTempPath!, videoFileName, true);
+    const videoUpload = await uploadToGCS(videoTempPath!, videoFileName);
     uploadedVideoFileName = videoUpload.fileName;
     
     console.log('Video uploaded to GCS:', videoUpload.publicUrl);

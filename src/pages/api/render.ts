@@ -17,6 +17,9 @@ import {
 } from '@/lib/utils';
 import type { RenderRequest, RenderResponse, ErrorResponse } from '@/lib/types';
 
+const durationInFrames = 900; 
+const fps = RENDER_CONFIG.FPS;
+
 export const config = {
   api: {
     bodyParser: {
@@ -44,12 +47,6 @@ export default async function handler(
       return res.status(400).json({ error: ERROR_MESSAGES.MISSING_PARAMETERS });
     }
 
-
-    console.log('Rendering video from:', videoPath);
-
- 
-    const durationInFrames = 900; 
-    const fps = RENDER_CONFIG.FPS;
 
     // Bundle the Remotion project
     console.log('Bundling Remotion project...');
@@ -95,7 +92,7 @@ export default async function handler(
     console.log('Uploading rendered video to GCS...');
     const timestamp = Date.now();
     const gcsFileName = `renders/${timestamp}-rendered.mp4`;
-    const uploadResult = await uploadToGCS(tempOutputPath, gcsFileName, true);
+    const uploadResult = await uploadToGCS(tempOutputPath, gcsFileName);
 
     if (tempOutputPath && fs.existsSync(tempOutputPath)) {
       fs.unlinkSync(tempOutputPath);

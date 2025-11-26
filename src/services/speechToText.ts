@@ -2,6 +2,10 @@ import { SpeechClient, protos } from '@google-cloud/speech';
 import { Storage } from '@google-cloud/storage';
 import * as fs from 'fs';
 import * as path from 'path';
+const ffmpeg = require('fluent-ffmpeg');
+
+type IRecognitionConfig = protos.google.cloud.speech.v1.IRecognitionConfig;
+const AudioEncoding = protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding;
 
 const speechClient = new SpeechClient();
 const storage = new Storage();
@@ -45,8 +49,8 @@ export async function transcribeAudio(audioFilePath: string): Promise<CaptionSeg
       uri: gcsUri,
     };
 
-    const config: protos.google.cloud.speech.v1.IRecognitionConfig = {
-      encoding: protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.MP3,
+    const config: IRecognitionConfig = {
+      encoding: AudioEncoding.MP3,
       sampleRateHertz: 44100,
       languageCode: 'en-US',
       alternativeLanguageCodes: ['hi-IN'],
@@ -132,8 +136,6 @@ export async function transcribeAudio(audioFilePath: string): Promise<CaptionSeg
 }
 
 export async function extractAudioFromVideo(videoPath: string, audioPath: string): Promise<void> {
-  const ffmpeg = require('fluent-ffmpeg');
-  
   return new Promise((resolve, reject) => {
     ffmpeg(videoPath)
       .output(audioPath)

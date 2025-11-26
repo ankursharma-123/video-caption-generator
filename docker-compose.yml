@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - GOOGLE_APPLICATION_CREDENTIALS=/key.json
+      - GOOGLE_CLOUD_PROJECT_ID=${GOOGLE_CLOUD_PROJECT_ID}
+      - GOOGLE_CLOUD_BUCKET_NAME=${GOOGLE_CLOUD_BUCKET_NAME}
+      - GCS_BUCKET_NAME=${GCS_BUCKET_NAME}
+    volumes:
+      # Mount credentials as read-only
+      - ./key.json:/key.json:ro
+      # Persist uploads and renders
+      - ./public/uploads:/app/public/uploads
+      - ./public/renders:/app/public/renders
+    restart: unless-stopped

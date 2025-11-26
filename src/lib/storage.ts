@@ -1,11 +1,11 @@
-import { Storage } from '@google-cloud/storage';
-import { initializeGoogleCredentials } from './credentials';
+import { Storage } from "@google-cloud/storage";
+import { initializeGoogleCredentials } from "./credentials";
 
 // Initialize credentials
 initializeGoogleCredentials();
 
 const storage = new Storage();
-const BUCKET_NAME = process.env.GOOGLE_CLOUD_BUCKET_NAME || 'captiongenerator';
+const BUCKET_NAME = process.env.GOOGLE_CLOUD_BUCKET_NAME || "captiongenerator";
 
 export interface UploadResult {
   publicUrl: string;
@@ -13,87 +13,48 @@ export interface UploadResult {
   fileName: string;
 }
 
-
 export async function uploadToGCS(
   filePath: string,
-  destination: string,
-  makePublic: boolean = true
+  destination: string
 ): Promise<UploadResult> {
   const bucket = storage.bucket(BUCKET_NAME);
-  
-  try {
-    const contentType = destination.endsWith('.mp4') ? 'video/mp4' : 
-                       destination.endsWith('.mp3') ? 'audio/mpeg' : 
-                       'application/octet-stream';
-    
-    const uploadOptions: any = {
-      destination: destination,
-      metadata: {
-        contentType: contentType,
-        cacheControl: 'public, max-age=31536000',
-        metadata: {
-          firebaseStorageDownloadTokens: undefined, 
-        },
-      },
-    };
+  const contentType = destination.endsWith(".mp4")
+    ? "video/mp4"
+    : destination.endsWith(".mp3")
+    ? "audio/mpeg"
+    : "application/octet-stream";
 
-    if (makePublic) {
-      uploadOptions.predefinedAcl = 'publicRead';
-    }
+  const [file] = await bucket.upload(filePath, {
+    destination: destination,
+    metadata: {
+      contentType: contentType,
+      cacheControl: "public, max-age=31536000",
+    },
+  });
 
-    const [file] = await bucket.upload(filePath, uploadOptions);
+  // Generate signed URL for secure access (valid for 7 days)
+  const [signedUrl] = await file.getSignedUrl({
+    action: "read",
+    expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
 
-    const encodedDestination = destination.split('/').map(part => encodeURIComponent(part)).join('/');
-    const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${encodedDestination}`;
-    const gcsUri = `gs://${BUCKET_NAME}/${destination}`;
+  const gcsUri = `gs://${BUCKET_NAME}/${destination}`;
 
-    return {
-      publicUrl,
-      gcsUri,
-      fileName: destination,
-    };
-  } catch (error: any) {
-    if (error.message && error.message.includes('uniform bucket-level access')) {
-      console.log('Note: Bucket has uniform access enabled. Files will use bucket-level permissions.');
- 
-      const contentType = destination.endsWith('.mp4') ? 'video/mp4' : 
-                         destination.endsWith('.mp3') ? 'audio/mpeg' : 
-                         'application/octet-stream';
-      
-      const [file] = await bucket.upload(filePath, {
-        destination: destination,
-        metadata: {
-          contentType: contentType,
-          cacheControl: 'public, max-age=31536000',
-        },
-      });
-
-      const encodedDestination = destination.split('/').map(part => encodeURIComponent(part)).join('/');
-      const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${encodedDestination}`;
-      const gcsUri = `gs://${BUCKET_NAME}/${destination}`;
-
-      return {
-        publicUrl,
-        gcsUri,
-        fileName: destination,
-      };
-    }
-    
-    console.error('Error uploading to GCS:', error);
-    throw error;
-  }
+  return {
+    publicUrl: signedUrl,
+    gcsUri,
+    fileName: destination,
+  };
 }
-
 
 export async function deleteFromGCS(fileName: string): Promise<void> {
   try {
     await storage.bucket(BUCKET_NAME).file(fileName).delete();
     console.log(`Deleted ${fileName} from GCS`);
   } catch (error) {
-    console.error('Error deleting from GCS:', error);
+    console.error("Error deleting from GCS:", error);
   }
 }
-
 
 export async function getSignedUrl(
   fileName: string,
@@ -104,24 +65,14 @@ export async function getSignedUrl(
       .bucket(BUCKET_NAME)
       .file(fileName)
       .getSignedUrl({
-        action: 'read',
+        action: "read",
         expires: Date.now() + expiresIn * 1000,
       });
-    
+
     return url;
   } catch (error) {
-    console.error('Error getting signed URL:', error);
+    console.error("Error getting signed URL:", error);
     throw error;
   }
 }
 
-
-export async function fileExistsInGCS(fileName: string): Promise<boolean> {
-  try {
-    const [exists] = await storage.bucket(BUCKET_NAME).file(fileName).exists();
-    return exists;
-  } catch (error) {
-    console.error('Error checking file existence:', error);
-    return false;
-  }
-}

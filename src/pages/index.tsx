@@ -21,9 +21,9 @@ export default function Home() {
   const [selectedStyle, setSelectedStyle] = useState<(typeof CAPTION_STYLES)[keyof typeof CAPTION_STYLES]>(CAPTION_STYLES.BOTTOM_CENTERED);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [status, setStatus] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [renderLoading, setRenderLoading] = useState(false);
+  const [renderProgress, setRenderProgress] = useState(0);
   const [renderedVideoPath, setRenderedVideoPath] = useState<string>('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,7 +48,6 @@ export default function Home() {
     setError('');
 
     try {
-      // Use direct GCS upload for large files (> 30MB)
       if (videoFile.size > DIRECT_UPLOAD_THRESHOLD) {
         await handleDirectGCSUpload();
       } else {
@@ -56,7 +55,6 @@ export default function Home() {
       }
     } catch (err: any) {
       setError(err.response?.data?.details || err.message || ERROR_MESSAGES.UPLOAD_FAILED);
-      setStatus('');
       setUploadProgress(0);
     } finally {
       setLoading(false);
@@ -64,13 +62,9 @@ export default function Home() {
     }
   };
 
-  // Direct upload to GCS for large files (bypasses Cloud Run 32MB limit)
   const handleDirectGCSUpload = async () => {
     if (!videoFile) return;
-
-    setStatus('Getting upload URL...');
     
-    // Step 1: Get signed upload URL from our API
     const urlResponse = await axios.post(API_ENDPOINTS.GENERATE_UPLOAD_URL, {
       fileName: videoFile.name,
       contentType: videoFile.type || 'video/mp4',
@@ -78,16 +72,12 @@ export default function Home() {
 
     const { uploadUrl, fileName: gcsFileName, publicUrl } = urlResponse.data;
 
-    setStatus('Uploading video directly to cloud storage...');
-
-    // Step 2: Upload directly to GCS using the signed URL
     await axios.put(uploadUrl, videoFile, {
       headers: {
         'Content-Type': videoFile.type || 'video/mp4',
       },
       onUploadProgress: (progressEvent) => {
         if (progressEvent.total) {
-          // Upload is 0-60%, processing is 60-100%
           const percentCompleted = Math.round((progressEvent.loaded * 60) / progressEvent.total);
           setUploadProgress(percentCompleted);
         }
@@ -95,9 +85,7 @@ export default function Home() {
     });
 
     setUploadProgress(65);
-    setStatus('Processing video and generating captions...');
 
-    // Step 3: Call process-video API to transcribe
     const processResponse = await axios.post(API_ENDPOINTS.PROCESS_VIDEO, {
       gcsFileName,
       publicUrl,
@@ -106,14 +94,10 @@ export default function Home() {
     setUploadProgress(100);
     setVideoPath(processResponse.data.videoPath);
     setCaptions(processResponse.data.captions);
-    setStatus('Captions generated successfully!');
   };
 
-  // Standard form data upload for smaller files
   const handleFormDataUpload = async () => {
     if (!videoFile) return;
-
-    setStatus('Uploading video...');
 
     const formData = new FormData();
     formData.append('video', videoFile);
@@ -124,13 +108,8 @@ export default function Home() {
       },
       onUploadProgress: (progressEvent) => {
         if (progressEvent.total) {
-          // Upload is typically 0-70%, then processing takes 70-100%
           const percentCompleted = Math.round((progressEvent.loaded * 70) / progressEvent.total);
           setUploadProgress(percentCompleted);
-          
-          if (percentCompleted >= 70) {
-            setStatus('Processing video and generating captions...');
-          }
         }
       },
     });
@@ -138,7 +117,6 @@ export default function Home() {
     setUploadProgress(100);
     setVideoPath(response.data.videoPath);
     setCaptions(response.data.captions);
-    setStatus('Captions generated successfully!');
   };
 
   const handleRender = async () => {
@@ -148,8 +126,16 @@ export default function Home() {
     }
 
     setRenderLoading(true);
-    setStatus('Rendering video with captions...');
+    setRenderProgress(0);
     setError('');
+
+    // Simulate progress for rendering (since we don't have real-time progress from API)
+    const progressInterval = setInterval(() => {
+      setRenderProgress(prev => {
+        if (prev >= 90) return prev;
+        return prev + Math.random() * 10;
+      });
+    }, 500);
 
     try {
       const response = await axios.post(API_ENDPOINTS.RENDER, {
@@ -158,13 +144,15 @@ export default function Home() {
         style: selectedStyle,
       });
 
+      clearInterval(progressInterval);
+      setRenderProgress(100);
       setRenderedVideoPath(response.data.outputPath);
-      setStatus('Video rendered successfully!');
     } catch (err: any) {
+      clearInterval(progressInterval);
       setError(err.response?.data?.details || ERROR_MESSAGES.RENDER_FAILED);
-      setStatus('');
     } finally {
       setRenderLoading(false);
+      setTimeout(() => setRenderProgress(0), 1000);
     }
   };
 
@@ -209,23 +197,36 @@ export default function Home() {
           </button>
         </div>
 
-        {loading && uploadProgress > 0 && (
-          <div className={styles.progressContainer}>
-            <div className={styles.progressBar}>
-              <div 
-                className={styles.progressFill} 
-                style={{ width: `${uploadProgress}%` }}
-              >
-                <span className={styles.progressText}>{uploadProgress.toFixed(0)}%</span>
-              </div>
+        {(loading || renderLoading) && (
+          <div className={styles.progressOverlay}>
+            <div className={styles.circularProgress}>
+              <svg className={styles.progressRing} viewBox="0 0 120 120">
+                <circle
+                  className={styles.progressRingBg}
+                  cx="60"
+                  cy="60"
+                  r="52"
+                  fill="none"
+                  strokeWidth="8"
+                />
+                <circle
+                  className={styles.progressRingFill}
+                  cx="60"
+                  cy="60"
+                  r="52"
+                  fill="none"
+                  strokeWidth="8"
+                  strokeDasharray={`${2 * Math.PI * 52}`}
+                  strokeDashoffset={`${2 * Math.PI * 52 * (1 - (loading ? uploadProgress : renderProgress) / 100)}`}
+                />
+              </svg>
+              <span className={styles.progressPercent}>
+                {Math.round(loading ? uploadProgress : renderProgress)}%
+              </span>
             </div>
-            <p className={styles.progressLabel}>
-              {uploadProgress < 70 ? 'Uploading video...' : 'Processing and generating captions...'}
-            </p>
           </div>
         )}
 
-        {status && <p className={styles.status}>{status}</p>}
         {error && <p className={styles.error}>{error}</p>}
 
         {captions.length > 0 && (
